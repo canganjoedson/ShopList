@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "poetry-alembic"
+version = "0.1.0"
+description = ""
+authors = ["Edson Canganjo <edsoncanganjo@hotmail.com>"]
+readme = "README.md"
+packages = [{include = "poetry_alembic"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+alembic = "^1.8.1"
+sqlacodegen = "3.0.0rc1"
+fastapi = "^0.84.0"
+uvicorn = {extras = ["standard"], version = "^0.18.3"}
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+pydantic = {extras = ["email"], version = "^1.10.2"}
+python-multipart = "^0.0.5"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
