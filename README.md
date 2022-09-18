@@ -1,4 +1,11 @@
 
+## To run the project
+1 - [Install poetry](https://python-poetry.org/docs/#installation)
+
+```bash
+poetry install
+poetry run uvicorn app.main:app --reload
+```
 
 Initiate Poetry
 ```bash

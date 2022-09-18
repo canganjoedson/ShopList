@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Dict, Optional, Union
 
 from sqlalchemy.orm import Session
@@ -13,12 +14,18 @@ class UserRepository(Repository[User, UserCreate, UserUpdate]):
         return db.query(User).filter(User.email == email).first()
 
     def create(self, db: Session, *, obj_in: UserCreate) -> User:
+        ''' This method creates a new user based on UserCreate schema'''
         db_obj = User(
+            first_name=obj_in.first_name,
+            last_name=obj_in.last_name,
             email=obj_in.email,
+            username=obj_in.username,
             hashed_password=get_password_hash(obj_in.password),
-            full_name=obj_in.full_name,
-            is_superuser=obj_in.is_superuser,
+            full_name=f'{obj_in.first_name} {obj_in.last_name}',
+            joined_at=datetime.utcnow(),
+            image=obj_in.image,
         )
+
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)

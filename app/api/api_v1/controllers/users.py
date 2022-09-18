@@ -1,11 +1,13 @@
+from hmac import new
 from typing import Any, List
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, status, Body, Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
 from pydantic.networks import EmailStr
 from sqlalchemy.orm import Session
 
-from app import repository, models
+from app import models
+from app.repository import user_repository
 from app.schemas import user_schema, token_schema
 from app.api import deps
 from app.core.config import settings
@@ -24,11 +26,11 @@ def read_users(
     """
     Retrieve users.
     """
-    users = repository.user.get_multi(db, skip=skip, limit=limit)
+    users = user_repository.user.get_multi(db, skip=skip, limit=limit)
     return users
 
 
-@router.post("/", response_model=user_schema.User)
+@router.post("/ad", response_model=user_schema.User)
 def create_user(
     *,
     db: Session = Depends(deps.get_db),
@@ -38,13 +40,13 @@ def create_user(
     """
     Create new user.
     """
-    user = repository.user.get_by_email(db, email=user_in.email)
+    user = user_repository.user.get_by_email(db, email=user_in.email)
     if user:
         raise HTTPException(
             status_code=400,
             detail="The user with this username already exists in the system.",
         )
-    user = repository.user.create(db, obj_in=user_in)
+    user = user_repository.user.create(db, obj_in=user_in)
     # TODO: Implement email sending 
     # if settings.EMAILS_ENABLED and user_in.email:
     #     send_new_account_email(
@@ -73,7 +75,7 @@ def update_user_me(
         user_in.full_name = full_name
     if email is not None:
         user_in.email = email
-    user = repository.user.update(db, db_obj=current_user, obj_in=user_in)
+    user = user_repository.user.update(db, db_obj=current_user, obj_in=user_in)
     return user
 
 
@@ -88,31 +90,24 @@ def read_user_me(
     return current_user
 
 
-@router.post("/open", response_model=user_schema.User)
-def create_user_open(
-    *,
-    db: Session = Depends(deps.get_db),
-    password: str = Body(...),
-    email: EmailStr = Body(...),
-    full_name: str = Body(None),
-) -> Any:
-    """
-    Create new user without the need to be logged in.
-    """
-    if not settings.USERS_OPEN_REGISTRATION:
-        raise HTTPException(
-            status_code=403,
-            detail="Open user registration is forbidden on this server",
-        )
-    user = repository.user.get_by_email(db, email=email)
-    if user:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this username already exists in the system",
-        )
-    user_in = user.UserCreate(password=password, email=email, full_name=full_name)
-    user = repository.user.create(db, obj_in=user_in)
-    return user
+@router.post("", status_code=status.HTTP_201_CREATED, response_model=user_schema.User)
+async def create_user(user_in: user_schema.UserCreate, db: Session = Depends(deps.get_db)):
+    # TODO: Check if user email doesn't exists
+    user_exists = user_repository.user.get_by_email(db, email=user_in.email)
+    if user_exists:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The user with mail already registered")
+
+    new_user = user_repository.user.create(db, obj_in=user_in)
+
+    return user_schema.UserOut(
+        id = new_user.id,
+        username = new_user.username,
+        email = new_user.email,
+        first_name = new_user.first_name,
+        last_name = new_user.last_name,
+        full_name = new_user.full_name,
+    )
+
 
 
 @router.get("/{user_id}", response_model=user_schema.User)
@@ -124,10 +119,10 @@ def read_user_by_id(
     """
     Get a specific user by id.
     """
-    user = repository.user.get(db, id=user_id)
+    user = user_repository.user.get(db, id=user_id)
     if user == current_user:
         return user
-    if not repository.user.is_superuser(current_user):
+    if not user_repository.user.is_superuser(current_user):
         raise HTTPException(
             status_code=400, detail="The user doesn't have enough privileges"
         )
@@ -145,11 +140,11 @@ def update_user(
     """
     Update a user.
     """
-    user = repository.user.get(db, id=user_id)
+    user = user_repository.user.get(db, id=user_id)
     if not user:
         raise HTTPException(
             status_code=404,
             detail="The user with this username does not exist in the system",
         )
-    user = repository.user.update(db, db_obj=user, obj_in=user_in)
+    user = user_repository.user.update(db, db_obj=user, obj_in=user_in)
     return user

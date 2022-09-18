@@ -7,6 +7,7 @@ from alembic import context
 
 # EFC: TO create automátic migrations
 from app.db.base import Base
+#from app.entities import user, product
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
